@@ -191,7 +191,7 @@ int main() {
         1958948863,
         960914243,
         450926852
-    }
+    };
     
     // Nombres de archivo para cada instancia (formato C++)
     vector<string> nombres_cpp = {
@@ -218,12 +218,13 @@ int main() {
     for (size_t i = 0; i < instancias.size(); i++) {
         int n_jobs = instancias[i].first;
         int n_machines = instancias[i].second;
+        long long seed = seeds[i];
         
         cout << "\nGenerando instancia " << (i+1) << "/" << instancias.size() << ": ";
         cout << n_jobs << " trabajos x " << n_machines << " máquinas" << endl;
         
         // Generar matriz
-        vector<vector<int>> matriz = generarMatrizPFSP(n_jobs, n_machines);
+        vector<vector<int>> matriz = generarMatrizPFSP(n_jobs, n_machines, seed);
         
         // Mostrar vista previa
         mostrarMatriz(matriz, "Instancia " + to_string(n_jobs) + "x" + to_string(n_machines));
