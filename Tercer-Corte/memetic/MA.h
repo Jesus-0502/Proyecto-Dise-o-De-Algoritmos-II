@@ -2,7 +2,7 @@
 #define MA_H
 
 #include <vector>
-
+using namespace std;
 struct MAParams {
     int populationSize = 80;
     int iterations = 0;
@@ -19,7 +19,7 @@ struct MAResult {
     int bestMakespan = 0;
 };
 
-MAResult run_memetic_algorithm(const std::vector<std::vector<int>>& tiempos,
+MAResult run_memetic_algorithm(const vector<vector<int>>& tiempos,
                                int n,
                                int m,
                                const MAParams& params);

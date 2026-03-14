@@ -13,21 +13,61 @@ int main() {
     vector<MAParams> configs;
     {
         MAParams p;
-        p.populationSize = 80;
-        p.recombinationProb = 0.90;
-        p.mutationProb = 0.12;
-        p.tournamentSize = 3;
-        p.localSearchIters = 1;
-        p.eliteCount = 2;
+        p.populationSize = 100;
+        p.recombinationProb = 1.0;
+        p.mutationProb = 0.50;
+        p.tournamentSize = 5;
+        p.localSearchIters = 30;
+        p.eliteCount = 3;
         configs.push_back(p);
     }
     {
         MAParams p;
         p.populationSize = 100;
-        p.recombinationProb = 0.92;
-        p.mutationProb = 0.10;
-        p.tournamentSize = 4;
-        p.localSearchIters = 1;
+        p.recombinationProb = 0.90;
+        p.mutationProb = 0.60;
+        p.tournamentSize = 5;
+        p.localSearchIters = 30;
+        p.eliteCount = 3;
+        configs.push_back(p);
+    }
+    {
+        MAParams p;
+        p.populationSize = 100;
+        p.recombinationProb = 0.80;
+        p.mutationProb = 0.70;
+        p.tournamentSize = 5;
+        p.localSearchIters = 30;
+        p.eliteCount = 3;
+        configs.push_back(p);
+    }
+    {
+        MAParams p;
+        p.populationSize = 100;
+        p.recombinationProb = 0.70;
+        p.mutationProb = 0.80;
+        p.tournamentSize = 5;
+        p.localSearchIters = 30;
+        p.eliteCount = 3;
+        configs.push_back(p);
+    }
+    {
+        MAParams p;
+        p.populationSize = 100;
+        p.recombinationProb = 0.60;
+        p.mutationProb = 0.90;
+        p.tournamentSize = 5;
+        p.localSearchIters = 30;
+        p.eliteCount = 3;
+        configs.push_back(p);
+    }
+    {
+        MAParams p;
+        p.populationSize = 100;
+        p.recombinationProb = 0.50;
+        p.mutationProb = 1.0;
+        p.tournamentSize = 5;
+        p.localSearchIters = 30;
         p.eliteCount = 3;
         configs.push_back(p);
     }

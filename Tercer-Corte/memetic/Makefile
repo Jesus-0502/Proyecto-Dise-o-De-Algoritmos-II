@@ -1,8 +1,8 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -O2 -Wall -Wextra
 
-TARGET = ma_pfsp
-SOURCES = main_ma.cpp MA.cpp
+TARGET = ma2_pfsp
+SOURCES = main_ma.cpp MA2.cpp
 
 all: $(TARGET)
 

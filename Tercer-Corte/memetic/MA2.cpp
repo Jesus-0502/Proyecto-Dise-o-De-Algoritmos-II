@@ -1,5 +1,5 @@
 #include "MA.h"
-
+#include <iostream>
 #include <algorithm>
 #include <limits>
 #include <numeric>
@@ -98,83 +98,99 @@ static int next_unused_from_parent(const vector<int>& parent,
     return parent[cursor];
 }
 
-static int pick_consensus_or_best_incremental(const vector<int>& candidates,
-                                              const vector<int>& partial,
-                                              const vector<vector<int>>& tiempos,
-                                              int m,
-                                              mt19937& rng) {
-    int n = static_cast<int>(candidates.size());
-    if (n == 0) return -1;
+// static int pick_consensus_or_best_incremental(const vector<int>& candidates,
+//                                               const vector<int>& partial,
+//                                               const vector<vector<int>>& tiempos,
+//                                               int m,
+//                                               mt19937& rng) {
+//     int n = static_cast<int>(candidates.size());
+//     if (n == 0) return -1;
 
-    for (int i = 0; i < n; ++i) {
-        int cnt = 1;
-        for (int j = i + 1; j < n; ++j) {
-            if (candidates[j] == candidates[i]) cnt++;
-        }
-        if (cnt >= 2) {
-            return candidates[i];
-        }
-    }
+//     for (int i = 0; i < n; ++i) {
+//         int cnt = 1;
+//         for (int j = i + 1; j < n; ++j) {
+//             if (candidates[j] == candidates[i]) cnt++;
+//         }
+//         if (cnt >= 2) {
+//             return candidates[i];
+//         }
+//     }
 
-    int bestJob = candidates[0];
-    int bestMs = numeric_limits<int>::max();
-    vector<int> tmp = partial;
+//     int bestJob = candidates[0];
+//     int bestMs = numeric_limits<int>::max();
+//     vector<int> tmp = partial;
 
-    for (int job : candidates) {
-        tmp.push_back(job);
-        int ms = compute_makespan_ma(tmp, tiempos, m);
-        if (ms < bestMs) {
-            bestMs = ms;
-            bestJob = job;
-        } else if (ms == bestMs) {
-            uniform_int_distribution<int> coin(0, 1);
-            if (coin(rng) == 1) bestJob = job;
-        }
-        tmp.pop_back();
-    }
+//     for (int job : candidates) {
+//         tmp.push_back(job);
+//         int ms = compute_makespan_ma(tmp, tiempos, m);
+//         if (ms < bestMs) {
+//             bestMs = ms;
+//             bestJob = job;
+//         } else if (ms == bestMs) {
+//             uniform_int_distribution<int> coin(0, 1);
+//             if (coin(rng) == 1) bestJob = job;
+//         }
+//         tmp.pop_back();
+//     }
 
-    return bestJob;
-}
+//     return bestJob;
+// }
 
-static vector<int> multi_parent_recombination(const vector<int>& p1,
-                                              const vector<int>& p2,
-                                              const vector<int>& p3,
-                                              const vector<vector<int>>& tiempos,
-                                              int m,
-                                              mt19937& rng) {
-    int n = static_cast<int>(p1.size());
-    vector<int> child;
-    child.reserve(n);
+static vector<int> sjox_three_parents(const vector<int>& p1,
+                                      const vector<int>& p2,
+                                      const vector<int>& p3,
+                                      mt19937& rng) {
+
+    int n = p1.size();
+    vector<int> child(n, -1);
     vector<char> used(n, false);
 
-    int c1 = 0, c2 = 0, c3 = 0;
+    // Step 1: detectar consenso entre padres
+    for (int i = 0; i < n; ++i) {
 
-    for (int pos = 0; pos < n; ++pos) {
-        int a = next_unused_from_parent(p1, c1, used);
-        int b = next_unused_from_parent(p2, c2, used);
-        int c = next_unused_from_parent(p3, c3, used);
+        int a = p1[i];
+        int b = p2[i];
+        int c = p3[i];
 
-        vector<int> candidates;
-        if (a != -1) candidates.push_back(a);
-        if (b != -1) candidates.push_back(b);
-        if (c != -1) candidates.push_back(c);
+        if (a == b || a == c) {
+            child[i] = a;
+            used[a] = true;
+        }
+        else if (b == c) {
+            child[i] = b;
+            used[b] = true;
+        }
+    }
 
-        int chosen = pick_consensus_or_best_incremental(candidates, child, tiempos, m, rng);
-        if (chosen == -1) {
-            for (int job = 0; job < n; ++job) {
-                if (!used[job]) {
-                    chosen = job;
+    // Step 2: rellenar huecos con orden relativo
+    int cursor = 0;
+
+    for (int i = 0; i < n; ++i) {
+
+        if (child[i] != -1)
+            continue;
+
+        while (cursor < n && used[p1[cursor]])
+            cursor++;
+
+        if (cursor < n) {
+            child[i] = p1[cursor];
+            used[p1[cursor]] = true;
+            cursor++;
+        }
+    }
+
+    // Safety check
+    for (int i = 0; i < n; ++i) {
+        if (child[i] == -1) {
+            for (int j = 0; j < n; ++j) {
+                if (!used[j]) {
+                    child[i] = j;
+                    used[j] = true;
                     break;
                 }
             }
         }
-
-        child.push_back(chosen);
-        used[chosen] = true;
-
-        if (a == chosen) ++c1;
-        if (b == chosen) ++c2;
-        if (c == chosen) ++c3;
     }
 
     return child;
@@ -191,38 +207,38 @@ static void inversion_mutation(vector<int>& ind, mt19937& rng) {
     reverse(ind.begin() + i, ind.begin() + j + 1);
 }
 
-static void remove_duplicates(vector<vector<int>>& population,
-                              mt19937& rng) {
+// static void remove_duplicates(vector<vector<int>>& population,
+//                               mt19937& rng) {
 
-    unordered_set<string> seen;
+//     unordered_set<string> seen;
 
-    for (auto& ind : population) {
+//     for (auto& ind : population) {
 
-        string key;
-        key.reserve(ind.size() * 3);
+//         string key;
+//         key.reserve(ind.size() * 3);
 
-        for (int x : ind) {
-            key += to_string(x);
-            key += ",";
-        }
+//         for (int x : ind) {
+//             key += to_string(x);
+//             key += ",";
+//         }
 
-        if (seen.count(key)) {
+//         if (seen.count(key)) {
 
-            // regenerar individuo
-            iota(ind.begin(), ind.end(), 0);
-            shuffle(ind.begin(), ind.end(), rng);
-        }
+//             // regenerar individuo
+//             iota(ind.begin(), ind.end(), 0);
+//             shuffle(ind.begin(), ind.end(), rng);
+//         }
 
-        key.clear();
+//         key.clear();
 
-        for (int x : ind) {
-            key += to_string(x);
-            key += ",";
-        }
+//         for (int x : ind) {
+//             key += to_string(x);
+//             key += ",";
+//         }
 
-        seen.insert(key);
-    }
-}
+//         seen.insert(key);
+//     }
+// }
 
 MAResult run_memetic_algorithm(const vector<vector<int>>& tiempos,
                                int n,
@@ -278,7 +294,8 @@ MAResult run_memetic_algorithm(const vector<vector<int>>& tiempos,
 
             vector<int> child;
             if (prob(rng) <= params.recombinationProb) {
-                child = multi_parent_recombination(population[i1], population[i2], population[i3], tiempos, m, rng);
+                // child = multi_parent_recombination(population[i1], population[i2], population[i3], tiempos, m, rng);
+                child = sjox_three_parents(population[i1], population[i2], population[i3], rng);
             } else {
                 child = population[i1];
             }
@@ -286,6 +303,7 @@ MAResult run_memetic_algorithm(const vector<vector<int>>& tiempos,
             if (prob(rng) <= params.mutationProb) {
                 inversion_mutation(child, rng);
             }
+            
 
             int maxTrials = min(6 * n, 180);
             child = improve_by_insertion_sampled(child, tiempos, m, params.localSearchIters, maxTrials, rng);
@@ -294,7 +312,8 @@ MAResult run_memetic_algorithm(const vector<vector<int>>& tiempos,
 
         population.swap(newPopulation);
 
-        remove_duplicates(population, rng);
+        // eliminar duplicados
+        // remove_duplicates(population, rng);
 
         evaluate();
     }
