@@ -1,4 +1,4 @@
-#include "MA.h"
+#include "SS.h"
 #include "../../Segundo-Corte/genetic-algorithm/Instances.h"
 
 #include <chrono>
@@ -10,65 +10,65 @@ using namespace std;
 int main() {
     auto instances = get_taillard_benchmark_instances();
 
-    vector<MAParams> configs;
+    vector<SSParams> configs;
     {
-        MAParams p;
+        SSParams p;
         p.populationSize = 100;
-        p.recombinationProb = 1.0;
-        p.mutationProb = 0.50;
+        p.recombinationProb = 0.9;
+        p.mutationProb = 0.6;
         p.tournamentSize = 5;
         p.localSearchIters = 30;
         p.eliteCount = 3;
+        p.diversityThreshold = 25;
+        p.pathRelinkingRate = 0.20;
         configs.push_back(p);
     }
     {
-        MAParams p;
+        SSParams p;
         p.populationSize = 100;
-        p.recombinationProb = 0.90;
-        p.mutationProb = 0.60;
+        p.recombinationProb = 0.9;
+        p.mutationProb = 0.6;
         p.tournamentSize = 5;
         p.localSearchIters = 30;
         p.eliteCount = 3;
+        p.diversityThreshold = 25;
+        p.pathRelinkingRate = 0.30;
         configs.push_back(p);
     }
-    {
-        MAParams p;
+        {
+        SSParams p;
         p.populationSize = 100;
-        p.recombinationProb = 0.80;
-        p.mutationProb = 0.70;
+        p.recombinationProb = 0.9;
+        p.mutationProb = 0.6;
         p.tournamentSize = 5;
         p.localSearchIters = 30;
         p.eliteCount = 3;
+        p.diversityThreshold = 25;
+        p.pathRelinkingRate = 0.40;
         configs.push_back(p);
     }
-    {
-        MAParams p;
+        {
+        SSParams p;
         p.populationSize = 100;
-        p.recombinationProb = 0.70;
-        p.mutationProb = 0.80;
+        p.recombinationProb = 0.9;
+        p.mutationProb = 0.6;
         p.tournamentSize = 5;
         p.localSearchIters = 30;
         p.eliteCount = 3;
+        p.diversityThreshold = 25;
+        p.pathRelinkingRate = 0.50;
         configs.push_back(p);
     }
-    {
-        MAParams p;
+        {
+        SSParams p;
         p.populationSize = 100;
-        p.recombinationProb = 0.60;
-        p.mutationProb = 0.90;
+        p.recombinationProb = 0.9;
+        p.mutationProb = 0.6;
         p.tournamentSize = 5;
         p.localSearchIters = 30;
         p.eliteCount = 3;
-        configs.push_back(p);
-    }
-    {
-        MAParams p;
-        p.populationSize = 100;
-        p.recombinationProb = 0.50;
-        p.mutationProb = 1.0;
-        p.tournamentSize = 5;
-        p.localSearchIters = 30;
-        p.eliteCount = 3;
+        p.diversityThreshold = 25;
+        p.pathRelinkingRate = 0.60;
         configs.push_back(p);
     }
 
@@ -79,24 +79,26 @@ int main() {
              << ", seed=" << instance.seed << ")" << endl;
 
         for (size_t cfg = 0; cfg < configs.size(); ++cfg) {
-            MAParams p = configs[cfg];
+            SSParams p = configs[cfg];
             if (instance.n <= 20) p.iterations = 220;
             else if (instance.n <= 50) p.iterations = 220;
             else p.iterations = 220;
             p.seed = static_cast<unsigned int>(instance.seed);
 
             auto start = chrono::high_resolution_clock::now();
-            MAResult result = run_memetic_algorithm(instance.tiempos, instance.n, instance.m, p);
+            SSResult result = run_memetic_algorithm(instance.tiempos, instance.n, instance.m, p);
             auto end = chrono::high_resolution_clock::now();
             chrono::duration<double> elapsed = end - start;
 
-            cout << "  Config MA #" << (cfg + 1)
+            cout << "  Config SS #" << (cfg + 1)
                  << ": pop=" << p.populationSize
                  << ", pr=" << p.recombinationProb
                  << ", pm=" << p.mutationProb
                  << ", torneo=" << p.tournamentSize
                  << ", LS=" << p.localSearchIters
-                 << ", iter=" << p.iterations << endl;
+                 << ", iter=" << p.iterations
+                 << ", threshold=" << p.diversityThreshold
+                 << ", pathRelinkingRate=" << p.pathRelinkingRate << endl;
 
             cout << "    Mejor makespan: " << result.bestMakespan << endl;
             cout << "    Tiempo: " << elapsed.count() << " s" << endl;

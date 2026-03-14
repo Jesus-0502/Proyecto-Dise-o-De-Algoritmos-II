@@ -1,4 +1,4 @@
-#include "MA.h"
+#include "SS.h"
 #include <iostream>
 #include <algorithm>
 #include <limits>
@@ -8,6 +8,72 @@
 #include <vector>
 
 using namespace std;
+
+static int solution_distance(const vector<int>& a, const vector<int>& b) {
+
+    int d = 0;
+    int n = a.size();
+
+    for(int i = 0; i < n; i++){
+        if(a[i] != b[i]) d++;
+    }
+
+    return d;
+}
+
+static bool is_diverse(const vector<int>& candidate,
+                       const vector<vector<int>>& population,
+                       int threshold){
+
+    for(const auto& sol : population){
+
+        if(solution_distance(candidate, sol) < threshold){
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static vector<int> path_relinking(const vector<int>& start,
+                                  const vector<int>& target,
+                                  const vector<vector<int>>& tiempos,
+                                  int m){
+
+    vector<int> current = start;
+    vector<int> best = start;
+
+    int bestMs = compute_makespan_ma(best, tiempos, m);
+
+    int n = start.size();
+
+    for(int i = 0; i < n; i++){
+
+        if(current[i] == target[i])
+            continue;
+
+        int job = target[i];
+
+        int pos = -1;
+        for(int j = 0; j < n; j++){
+            if(current[j] == job){
+                pos = j;
+                break;
+            }
+        }
+
+        swap(current[i], current[pos]);
+
+        int ms = compute_makespan_ma(current, tiempos, m);
+
+        if(ms < bestMs){
+            bestMs = ms;
+            best = current;
+        }
+    }
+
+    return best;
+}
 
 int compute_makespan_ma(const vector<int>& secuencia,
                         const vector<vector<int>>& tiempos,
@@ -239,10 +305,10 @@ static void inversion_mutation(vector<int>& ind, mt19937& rng) {
 //     }
 // }
 
-MAResult run_memetic_algorithm(const vector<vector<int>>& tiempos,
+SSResult run_memetic_algorithm(const vector<vector<int>>& tiempos,
                                int n,
                                int m,
-                               const MAParams& params) {
+                               const SSParams& params) {
     mt19937 rng(params.seed == 0 ? random_device{}() : params.seed);
 
     vector<vector<int>> population;
@@ -254,7 +320,7 @@ MAResult run_memetic_algorithm(const vector<vector<int>>& tiempos,
 
     vector<int> makespans(params.populationSize, 0);
 
-    MAResult best;
+    SSResult best;
     best.bestMakespan = numeric_limits<int>::max();
 
     auto evaluate = [&]() {
@@ -311,9 +377,57 @@ MAResult run_memetic_algorithm(const vector<vector<int>>& tiempos,
 
         population.swap(newPopulation);
 
-        // remove_duplicates(population, rng);
+        int numPairs = population.size() * params.pathRelinkingRate;
+
+
+        // int totalPairs = population.size() * (population.size() - 1) / 2;
+        // int numPairs = totalPairs * params.pathRelinkingRate;
+
+
+        uniform_int_distribution<int> dist(0, population.size()-1);
+
+        for(int k = 0; k < numPairs; k++){
+
+            int i = dist(rng);
+            int j = dist(rng);
+
+            if(i == j) continue;
+
+            vector<int> pr = path_relinking(population[i],
+                                            population[j],
+                                            tiempos,
+                                            m);
+
+            if(is_diverse(pr, population, params.diversityThreshold)){
+                population.push_back(pr);
+            }
+        }
 
         evaluate();
+
+        if(int(population.size()) > params.populationSize){
+
+        vector<int> order(population.size());
+        iota(order.begin(), order.end(), 0);
+
+        vector<int> ms(population.size());
+
+        for(int i = 0; i < int(population.size()); i++){
+            ms[i] = compute_makespan_ma(population[i], tiempos, m);
+        }
+
+        sort(order.begin(), order.end(),
+            [&](int a, int b){ return ms[a] < ms[b]; });
+
+        vector<vector<int>> trimmed;
+
+        for(int i = 0; i < params.populationSize; i++){
+            trimmed.push_back(population[order[i]]);
+        }
+
+        population.swap(trimmed);
+    }
+
     }
 
     return best;
