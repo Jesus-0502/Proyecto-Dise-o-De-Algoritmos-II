@@ -1,4 +1,4 @@
-Resultados resumidos de la Colonia de Abejas con Relinking Guiado (ABC-RG)
+Resultados resumidos de la Propagacion de Rumores con Relinking Guiado (PR-RG)
 
 Mejor por instancia:
 - pfsp_20x5: 1278, gap 0.00%, tiempo 0.275652 s

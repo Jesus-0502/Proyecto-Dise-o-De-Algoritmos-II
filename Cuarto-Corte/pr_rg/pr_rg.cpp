@@ -1,4 +1,4 @@
-#include "ABC.h"
+#include "pr_rg.h"
 #include "../../Segundo-Corte/genetic-algorithm/Instances.h"
 
 #include <algorithm>
@@ -11,9 +11,9 @@
 
 using namespace std;
 
-int compute_makespan_abc(const vector<int>& secuencia,
-                         const vector<vector<int>>& tiempos,
-                         int m) {
+int compute_makespan_pr(const vector<int>& secuencia,
+                        const vector<vector<int>>& tiempos,
+                        int m) {
     int n = static_cast<int>(secuencia.size());
     if (n == 0) return 0;
 
@@ -61,7 +61,7 @@ static vector<int> neh_sequence(const vector<vector<int>>& tiempos,
         for (int pos = 0; pos <= static_cast<int>(seq.size()); ++pos) {
             vector<int> candidate = seq;
             candidate.insert(candidate.begin() + pos, job);
-            int ms = compute_makespan_abc(candidate, tiempos, m);
+            int ms = compute_makespan_pr(candidate, tiempos, m);
             if (ms < bestMs) {
                 bestMs = ms;
                 bestPos = pos;
@@ -133,7 +133,7 @@ static vector<int> local_search_insertion_sampled(vector<int> seq,
     uniform_int_distribution<int> posDist(0, n - 1);
 
     for (int pass = 0; pass < maxPasses; ++pass) {
-        int currentMs = compute_makespan_abc(seq, tiempos, m);
+        int currentMs = compute_makespan_pr(seq, tiempos, m);
         bool improved = false;
 
         for (int trial = 0; trial < maxTrialsPerPass; ++trial) {
@@ -147,7 +147,7 @@ static vector<int> local_search_insertion_sampled(vector<int> seq,
             if (j > i) --j;
             neighbor.insert(neighbor.begin() + j, job);
 
-            int ms = compute_makespan_abc(neighbor, tiempos, m);
+            int ms = compute_makespan_pr(neighbor, tiempos, m);
             if (ms < currentMs) {
                 seq = move(neighbor);
                 currentMs = ms;
@@ -214,7 +214,7 @@ static vector<int> path_relink_best_of_path(const vector<int>& source,
                                             mt19937& rng) {
     vector<int> current = source;
     vector<int> best = current;
-    int bestMs = compute_makespan_abc(current, tiempos, m);
+    int bestMs = compute_makespan_pr(current, tiempos, m);
 
     int n = static_cast<int>(current.size());
     if (n < 2) return best;
@@ -253,7 +253,7 @@ static vector<int> path_relink_best_of_path(const vector<int>& source,
         current.erase(current.begin() + chosenIdx);
         current.insert(current.begin() + insertPos, job);
 
-        int ms = compute_makespan_abc(current, tiempos, m);
+        int ms = compute_makespan_pr(current, tiempos, m);
         if (ms < bestMs) {
             bestMs = ms;
             best = current;
@@ -290,29 +290,29 @@ static int roulette_select(const vector<int>& makespans,
     return candidates.back();
 }
 
-ABCResult run_bee_colony_pfsp(const vector<vector<int>>& tiempos,
-                              int n,
-                              int m,
-                              const ABCParams& params) {
+PRResult run_rumor_propagation_pfsp(const vector<vector<int>>& tiempos,
+                                    int n,
+                                    int m,
+                                    const PRParams& params) {
     mt19937 rng(params.seed == 0 ? random_device{}() : params.seed);
 
-    int colonySize = max(4, params.colonySize);
-    int eliteCount = max(1, min(params.eliteCount, colonySize - 1));
-    int onlookerCount = params.onlookerCount > 0 ? params.onlookerCount : max(1, colonySize / 2);
-    int trialLimit = max(1, params.trialLimit);
+    int networkSize = max(4, params.networkSize);
+    int eliteCount = max(1, min(params.eliteCount, networkSize - 1));
+    int listenerCount = params.listenerCount > 0 ? params.listenerCount : max(1, networkSize / 2);
+    int boredomLimit = max(1, params.boredomLimit);
     int localPasses = max(1, params.localSearchPasses);
     int localTrials = max(1, params.localSearchTrials);
     int relinkingPeriod = max(1, params.relinkingPeriod);
 
     vector<vector<int>> population;
-    population.reserve(colonySize);
+    population.reserve(networkSize);
 
-    vector<int> makespans(colonySize, 0);
-    vector<int> trials(colonySize, 0);
+    vector<int> makespans(networkSize, 0);
+    vector<int> stagnation(networkSize, 0);
 
-    for (int i = 0; i < colonySize; ++i) {
+    for (int i = 0; i < networkSize; ++i) {
         vector<int> seedSeq;
-        if (i < (colonySize * 3) / 4) {
+        if (i < (networkSize * 3) / 4) {
             seedSeq = randomized_neh_sequence(tiempos, n, m, rng);
         } else {
             seedSeq = make_random_permutation(n, rng);
@@ -325,12 +325,12 @@ ABCResult run_bee_colony_pfsp(const vector<vector<int>>& tiempos,
         population.push_back(move(seedSeq));
     }
 
-    ABCResult best;
+    PRResult best;
     best.bestMakespan = numeric_limits<int>::max();
 
     auto evaluate = [&]() {
-        for (int i = 0; i < colonySize; ++i) {
-            makespans[i] = compute_makespan_abc(population[i], tiempos, m);
+        for (int i = 0; i < networkSize; ++i) {
+            makespans[i] = compute_makespan_pr(population[i], tiempos, m);
             if (makespans[i] < best.bestMakespan) {
                 best.bestMakespan = makespans[i];
                 best.bestSequence = population[i];
@@ -343,18 +343,18 @@ ABCResult run_bee_colony_pfsp(const vector<vector<int>>& tiempos,
     uniform_real_distribution<double> prob(0.0, 1.0);
 
     for (int iter = 0; iter < params.iterations; ++iter) {
-        vector<int> order(colonySize);
+        vector<int> order(networkSize);
         iota(order.begin(), order.end(), 0);
         sort(order.begin(), order.end(), [&](int a, int b) {
             return makespans[a] < makespans[b];
         });
 
         int bestIndex = order.front();
-        int referenceBand = max(eliteCount + 1, colonySize / 4);
-        referenceBand = min(referenceBand, colonySize);
+        int referenceBand = max(eliteCount + 1, networkSize / 4);
+        referenceBand = min(referenceBand, networkSize);
 
-        // Employed bees: cada fuente intenta mejorar guiándose por una solución elite.
-        for (int rank = eliteCount; rank < colonySize; ++rank) {
+        // Informantes activos: cada rumor intenta mejorar guiandose por un rumor elite.
+        for (int rank = eliteCount; rank < networkSize; ++rank) {
             int idx = order[rank];
             int refIdx = order[uniform_int_distribution<int>(0, referenceBand - 1)(rng)];
 
@@ -364,13 +364,13 @@ ABCResult run_bee_colony_pfsp(const vector<vector<int>>& tiempos,
                                                            localPasses, localTrials, rng);
             }
 
-            int ms = compute_makespan_abc(candidate, tiempos, m);
+            int ms = compute_makespan_pr(candidate, tiempos, m);
             if (ms < makespans[idx]) {
                 population[idx] = move(candidate);
                 makespans[idx] = ms;
-                trials[idx] = 0;
+                stagnation[idx] = 0;
             } else {
-                ++trials[idx];
+                ++stagnation[idx];
             }
 
             if (makespans[idx] < best.bestMakespan) {
@@ -380,11 +380,11 @@ ABCResult run_bee_colony_pfsp(const vector<vector<int>>& tiempos,
             }
         }
 
-        // Onlooker bees: reforzar las soluciones más prometedoras.
-        vector<int> rouletteCandidates(colonySize);
+        // Oyentes: reforzar los rumores mas prometedores via ruleta sesgada.
+        vector<int> rouletteCandidates(networkSize);
         iota(rouletteCandidates.begin(), rouletteCandidates.end(), 0);
 
-        for (int o = 0; o < onlookerCount; ++o) {
+        for (int o = 0; o < listenerCount; ++o) {
             int idx = roulette_select(makespans, rouletteCandidates, rng);
             int refIdx = (prob(rng) < 0.7) ? bestIndex
                                            : order[uniform_int_distribution<int>(0, referenceBand - 1)(rng)];
@@ -394,13 +394,13 @@ ABCResult run_bee_colony_pfsp(const vector<vector<int>>& tiempos,
                                                        localPasses,
                                                        localTrials, rng);
 
-            int ms = compute_makespan_abc(candidate, tiempos, m);
+            int ms = compute_makespan_pr(candidate, tiempos, m);
             if (ms < makespans[idx]) {
                 population[idx] = move(candidate);
                 makespans[idx] = ms;
-                trials[idx] = 0;
+                stagnation[idx] = 0;
             } else {
-                ++trials[idx];
+                ++stagnation[idx];
             }
 
             if (makespans[idx] < best.bestMakespan) {
@@ -410,10 +410,10 @@ ABCResult run_bee_colony_pfsp(const vector<vector<int>>& tiempos,
             }
         }
 
-        // Scout bees: reinyectar diversidad cuando una fuente se estanca.
-        for (int i = 0; i < colonySize; ++i) {
-            if (trials[i] >= trialLimit) {
-                if (prob(rng) < params.scoutRandomRate) {
+        // Informantes exploradores: reinyectar diversidad cuando un rumor se estanca.
+        for (int i = 0; i < networkSize; ++i) {
+            if (stagnation[i] >= boredomLimit) {
+                if (prob(rng) < params.explorerRandomRate) {
                     population[i] = make_random_permutation(n, rng);
                 } else {
                     population[i] = randomized_neh_sequence(tiempos, n, m, rng);
@@ -421,8 +421,8 @@ ABCResult run_bee_colony_pfsp(const vector<vector<int>>& tiempos,
                 population[i] = local_search_insertion_sampled(move(population[i]), tiempos, m,
                                                                   max(1, localPasses - 2),
                                                                   localTrials, rng);
-                makespans[i] = compute_makespan_abc(population[i], tiempos, m);
-                trials[i] = 0;
+                makespans[i] = compute_makespan_pr(population[i], tiempos, m);
+                stagnation[i] = 0;
 
                 if (makespans[i] < best.bestMakespan) {
                     best.bestMakespan = makespans[i];
@@ -432,10 +432,10 @@ ABCResult run_bee_colony_pfsp(const vector<vector<int>>& tiempos,
             }
         }
 
-        // Path relinking periódico entre la mejor fuente y una elite distinta.
-        if ((iter + 1) % relinkingPeriod == 0 && colonySize > eliteCount) {
+        // Path relinking periodico entre el mejor rumor y otro elite.
+        if ((iter + 1) % relinkingPeriod == 0 && networkSize > eliteCount) {
             int referenceIdx = order[uniform_int_distribution<int>(0, referenceBand - 1)(rng)];
-            if (referenceIdx == bestIndex && colonySize > eliteCount + 1) {
+            if (referenceIdx == bestIndex && networkSize > eliteCount + 1) {
                 referenceIdx = order[uniform_int_distribution<int>(1, referenceBand - 1)(rng)];
             }
 
@@ -446,12 +446,12 @@ ABCResult run_bee_colony_pfsp(const vector<vector<int>>& tiempos,
                                                        localPasses,
                                                        localTrials, rng);
 
-            int ms = compute_makespan_abc(candidate, tiempos, m);
+            int ms = compute_makespan_pr(candidate, tiempos, m);
             int worstIdx = order.back();
             if (ms < makespans[worstIdx]) {
                 population[worstIdx] = move(candidate);
                 makespans[worstIdx] = ms;
-                trials[worstIdx] = 0;
+                stagnation[worstIdx] = 0;
             }
 
             if (ms < best.bestMakespan) {
