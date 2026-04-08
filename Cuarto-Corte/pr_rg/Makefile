@@ -1,8 +1,8 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -O2 -Wall -Wextra
 
-TARGET = abc_pfsp
-SOURCES = main_abc.cpp ABC.cpp
+TARGET = pr_rg_pfsp
+SOURCES = main_pr_rg.cpp pr_rg.cpp
 
 all: $(TARGET)
 
